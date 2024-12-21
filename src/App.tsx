@@ -1,18 +1,47 @@
-// src/App.tsx
-
 import React, { useState } from "react";
 import "./App.css";
-import { Layout, Modal, Form, Input, Select, Button } from "antd";
+import { Layout, Modal, Form, Input, Select, Button, message } from "antd";
 import NavBar from "./components/NavBar";
 import MarketView from "./pages/MarketView";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import MyNFTs from "./pages/MyNFTs";
+import { AptosClient } from "aptos";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+
+
+const client = new AptosClient("https://fullnode.testnet.aptoslabs.com/v1");
+const marketplaceAddr = "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
 
 function App() {
+  const { signAndSubmitTransaction } = useWallet();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   // Function to open the Mint NFT modal
   const handleMintNFTClick = () => setIsModalVisible(true);
+
+  const handleMintNFT = async (values: { name: string; description: string; uri: string; rarity: number }) => {
+    try {
+      const nameVector = Array.from(new TextEncoder().encode(values.name));
+      const descriptionVector = Array.from(new TextEncoder().encode(values.description));
+      const uriVector = Array.from(new TextEncoder().encode(values.uri));
+
+      const entryFunctionPayload = {
+        type: "entry_function_payload",
+        function: `${marketplaceAddr}::NFTMarketplace::mint_nft`,
+        type_arguments: [],
+        arguments: [nameVector, descriptionVector, uriVector, values.rarity],
+      };
+
+      const txnResponse = await (window as any).aptos.signAndSubmitTransaction(entryFunctionPayload);
+      await client.waitForTransaction(txnResponse.hash);
+
+      message.success("NFT minted successfully!");
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error("Error minting NFT:", error);
+      message.error("Failed to mint NFT.");
+    }
+  };
 
   return (
     <Router>
@@ -20,7 +49,7 @@ function App() {
         <NavBar onMintNFTClick={handleMintNFTClick} /> {/* Pass handleMintNFTClick to NavBar */}
 
         <Routes>
-          <Route path="/" element={<MarketView />} />
+          <Route path="/" element={<MarketView marketplaceAddr={marketplaceAddr} />} />
           <Route path="/my-nfts" element={<MyNFTs />} />
         </Routes>
 
@@ -30,7 +59,7 @@ function App() {
           onCancel={() => setIsModalVisible(false)}
           footer={null}
         >
-          <Form layout="vertical">
+          <Form layout="vertical" onFinish={handleMintNFT}>
             <Form.Item label="Name" name="name" rules={[{ required: true, message: "Please enter a name!" }]}>
               <Input />
             </Form.Item>
@@ -49,7 +78,7 @@ function App() {
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="button" onClick={() => setIsModalVisible(false)}>
+              <Button type="primary" htmlType="submit">
                 Mint NFT
               </Button>
             </Form.Item>
