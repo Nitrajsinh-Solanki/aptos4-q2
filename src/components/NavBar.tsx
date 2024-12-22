@@ -22,7 +22,7 @@ import { Link } from "react-router-dom";
 const { Header } = Layout;
 const { Text } = Typography;
 
-const client = new AptosClient("https://fullnode.testnet.aptoslabs.com/v1");
+const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
 
 interface NavBarProps {
   onMintNFTClick: () => void;
@@ -119,6 +119,11 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
           </Menu.Item>
           <Menu.Item key="mint-nft" onClick={onMintNFTClick}>
             <span style={{ color: "#fff" }}>Mint NFT</span>
+          </Menu.Item>
+          <Menu.Item key="auctions">
+            <Link to="/auctions" style={{ color: "#fff" }}>
+              Auctions
+            </Link>
           </Menu.Item>
         </Menu>
       </div>

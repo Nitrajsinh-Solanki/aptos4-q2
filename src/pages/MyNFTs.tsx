@@ -1,12 +1,22 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Typography, Card, Row, Col, Pagination, message, Button, Input, Modal } from "antd";
+import {
+  Typography,
+  Card,
+  Row,
+  Col,
+  Pagination,
+  message,
+  Button,
+  Input,
+  Modal,
+} from "antd";
 import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
 const { Title } = Typography;
 const { Meta } = Card;
 
-const client = new AptosClient("https://fullnode.testnet.aptoslabs.com/v1");
+const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
 
 type NFT = {
   id: number;
@@ -24,11 +34,16 @@ const MyNFTs: React.FC = () => {
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [totalNFTs, setTotalNFTs] = useState(0);
   const { account, signAndSubmitTransaction } = useWallet();
-  const marketplaceAddr = "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
+  const marketplaceAddr =
+    "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
   const [salePrice, setSalePrice] = useState<string>("");
+
+  const [isAuctionModalVisible, setIsAuctionModalVisible] = useState(false);
+  const [auctionStartPrice, setAuctionStartPrice] = useState("");
+  const [auctionDuration, setAuctionDuration] = useState("");
 
   const fetchUserNFTs = useCallback(async () => {
     if (!account) return;
@@ -40,7 +55,9 @@ const MyNFTs: React.FC = () => {
         type_arguments: [],
       });
 
-      const nftIds = Array.isArray(nftIdsResponse[0]) ? nftIdsResponse[0] : nftIdsResponse;
+      const nftIds = Array.isArray(nftIdsResponse[0])
+        ? nftIdsResponse[0]
+        : nftIdsResponse;
       setTotalNFTs(nftIds.length);
 
       if (nftIds.length === 0) {
@@ -48,49 +65,62 @@ const MyNFTs: React.FC = () => {
         return;
       }
 
-      const userNFTs = (await Promise.all(
-        nftIds.map(async (id) => {
-          try {
-            const nftDetails = await client.view({
-              function: `${marketplaceAddr}::NFTMarketplace::get_nft_details`,
-              arguments: [marketplaceAddr, id],
-              type_arguments: [],
-            });
+      const userNFTs = (
+        await Promise.all(
+          nftIds.map(async (id) => {
+            try {
+              const nftDetails = await client.view({
+                function: `${marketplaceAddr}::NFTMarketplace::get_nft_details`,
+                arguments: [marketplaceAddr, id],
+                type_arguments: [],
+              });
 
-            const [nftId, owner, name, description, uri, price, forSale, rarity] = nftDetails as [
-              number,
-              string,
-              string,
-              string,
-              string,
-              number,
-              boolean,
-              number
-            ];
+              const [
+                nftId,
+                owner,
+                name,
+                description,
+                uri,
+                price,
+                forSale,
+                rarity,
+              ] = nftDetails as [
+                number,
+                string,
+                string,
+                string,
+                string,
+                number,
+                boolean,
+                number
+              ];
 
-            const hexToUint8Array = (hexString: string): Uint8Array => {
-              const bytes = new Uint8Array(hexString.length / 2);
-              for (let i = 0; i < hexString.length; i += 2) {
-                bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
-              }
-              return bytes;
-            };
+              const hexToUint8Array = (hexString: string): Uint8Array => {
+                const bytes = new Uint8Array(hexString.length / 2);
+                for (let i = 0; i < hexString.length; i += 2) {
+                  bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
+                }
+                return bytes;
+              };
 
-            return {
-              id: nftId,
-              name: new TextDecoder().decode(hexToUint8Array(name.slice(2))),
-              description: new TextDecoder().decode(hexToUint8Array(description.slice(2))),
-              uri: new TextDecoder().decode(hexToUint8Array(uri.slice(2))),
-              rarity,
-              price: price / 100000000,
-              for_sale: forSale,
-            };
-          } catch (error) {
-            console.error(`Error fetching details for NFT ID ${id}:`, error);
-            return null;
-          }
-        })
-      )).filter((nft): nft is NFT => nft !== null);
+              return {
+                id: nftId,
+                name: new TextDecoder().decode(hexToUint8Array(name.slice(2))),
+                description: new TextDecoder().decode(
+                  hexToUint8Array(description.slice(2))
+                ),
+                uri: new TextDecoder().decode(hexToUint8Array(uri.slice(2))),
+                rarity,
+                price: price / 100000000,
+                for_sale: forSale,
+              };
+            } catch (error) {
+              console.error(`Error fetching details for NFT ID ${id}:`, error);
+              return null;
+            }
+          })
+        )
+      ).filter((nft): nft is NFT => nft !== null);
 
       setNfts(userNFTs);
     } catch (error) {
@@ -120,10 +150,16 @@ const MyNFTs: React.FC = () => {
         type: "entry_function_payload",
         function: `${marketplaceAddr}::NFTMarketplace::list_for_sale`,
         type_arguments: [],
-        arguments: [marketplaceAddr, selectedNft.id.toString(), priceInOctas.toString()],
+        arguments: [
+          marketplaceAddr,
+          selectedNft.id.toString(),
+          priceInOctas.toString(),
+        ],
       };
 
-      const response = await (window as any).aptos.signAndSubmitTransaction(entryFunctionPayload);
+      const response = await (window as any).aptos.signAndSubmitTransaction(
+        entryFunctionPayload
+      );
       await client.waitForTransaction(response.hash);
 
       message.success("NFT listed for sale successfully!");
@@ -140,7 +176,71 @@ const MyNFTs: React.FC = () => {
     fetchUserNFTs();
   }, [fetchUserNFTs, currentPage]);
 
-  const paginatedNFTs = nfts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedNFTs = nfts.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const handleCreateAuction = async () => {
+    if (!selectedNft || !auctionStartPrice || !auctionDuration) {
+        message.error("Please fill in all auction details");
+        return;
+    }
+
+    try {
+        const startPriceInOctas = Math.floor(parseFloat(auctionStartPrice) * 100000000);
+        const durationInSeconds = Math.floor(parseFloat(auctionDuration));
+        
+        if (durationInSeconds < 60) {
+            message.error("Auction duration must be at least 60 seconds");
+            return;
+        }
+
+        const payload = {
+            type: "entry_function_payload",
+            function: `${marketplaceAddr}::NFTMarketplace::create_auction`,
+            type_arguments: [],
+            arguments: [
+                marketplaceAddr,
+                selectedNft.id,
+                startPriceInOctas,
+                durationInSeconds
+            ]
+        };
+
+        try {
+            const initPayload = {
+                type: "entry_function_payload",
+                function: `${marketplaceAddr}::NFTMarketplace::initialize_auction_store`,
+                type_arguments: [],
+                arguments: []
+            };
+            await (window as any).aptos.signAndSubmitTransaction(initPayload);
+        } catch (error) {
+            console.log("Auction store might already be initialized");
+        }
+
+        const response = await (window as any).aptos.signAndSubmitTransaction(payload);
+        await client.waitForTransaction(response.hash);
+
+        message.success("Auction created successfully!");
+        setIsAuctionModalVisible(false);
+        setAuctionStartPrice("");
+        setAuctionDuration("");
+        fetchUserNFTs();
+    } catch (error: any) {
+        console.error("Error creating auction:", error);
+        message.error(error.message || "Failed to create auction. Please try again.");
+    }
+};
+
+
+
+
+
+  
+  
+  
 
   return (
     <div
@@ -151,7 +251,9 @@ const MyNFTs: React.FC = () => {
         alignItems: "center",
       }}
     >
-      <Title level={2} style={{ marginBottom: "20px" }}>My Collection</Title>
+      <Title level={2} style={{ marginBottom: "20px" }}>
+        My Collection
+      </Title>
       <p>Your personal collection of NFTs.</p>
 
       <Row
@@ -168,7 +270,11 @@ const MyNFTs: React.FC = () => {
         {paginatedNFTs.map((nft) => (
           <Col
             key={nft.id}
-            xs={24} sm={12} md={8} lg={8} xl={6}
+            xs={24}
+            sm={12}
+            md={8}
+            lg={8}
+            xl={6}
             style={{
               display: "flex",
               justifyContent: "center",
@@ -186,13 +292,27 @@ const MyNFTs: React.FC = () => {
               actions={[
                 <Button type="link" onClick={() => handleSellClick(nft)}>
                   Sell
-                </Button>
+                </Button>,
+                <Button
+                  type="link"
+                  onClick={() => {
+                    setSelectedNft(nft);
+                    setIsAuctionModalVisible(true);
+                  }}
+                >
+                  Send to Auction
+                </Button>,
               ]}
             >
-              <Meta title={nft.name} description={`Rarity: ${nft.rarity}, Price: ${nft.price} APT`} />
+              <Meta
+                title={nft.name}
+                description={`Rarity: ${nft.rarity}, Price: ${nft.price} APT`}
+              />
               <p>ID: {nft.id}</p>
               <p>{nft.description}</p>
-              <p style={{ margin: "10px 0" }}>For Sale: {nft.for_sale ? "Yes" : "No"}</p>
+              <p style={{ margin: "10px 0" }}>
+                For Sale: {nft.for_sale ? "Yes" : "No"}
+              </p>
             </Card>
           </Col>
         ))}
@@ -223,11 +343,21 @@ const MyNFTs: React.FC = () => {
       >
         {selectedNft && (
           <>
-            <p><strong>NFT ID:</strong> {selectedNft.id}</p>
-            <p><strong>Name:</strong> {selectedNft.name}</p>
-            <p><strong>Description:</strong> {selectedNft.description}</p>
-            <p><strong>Rarity:</strong> {selectedNft.rarity}</p>
-            <p><strong>Current Price:</strong> {selectedNft.price} APT</p>
+            <p>
+              <strong>NFT ID:</strong> {selectedNft.id}
+            </p>
+            <p>
+              <strong>Name:</strong> {selectedNft.name}
+            </p>
+            <p>
+              <strong>Description:</strong> {selectedNft.description}
+            </p>
+            <p>
+              <strong>Rarity:</strong> {selectedNft.rarity}
+            </p>
+            <p>
+              <strong>Current Price:</strong> {selectedNft.price} APT
+            </p>
 
             <Input
               type="number"
@@ -236,6 +366,48 @@ const MyNFTs: React.FC = () => {
               onChange={(e) => setSalePrice(e.target.value)}
               style={{ marginTop: 10 }}
             />
+          </>
+        )}
+      </Modal>
+      <Modal
+        title="Create Auction"
+        visible={isAuctionModalVisible}
+        onCancel={() => setIsAuctionModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsAuctionModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleCreateAuction}>
+            Create Auction
+          </Button>,
+        ]}
+      >
+        {selectedNft && (
+          <>
+            <p>
+              <strong>NFT ID:</strong> {selectedNft.id}
+            </p>
+            <p>
+              <strong>Name:</strong> {selectedNft.name}
+            </p>
+            <Input
+    type="number"
+    placeholder="Starting price in APT"
+    value={auctionStartPrice}
+    onChange={(e) => setAuctionStartPrice(e.target.value)}
+    min={0.1}
+    step={0.1}
+    style={{ marginBottom: 10 }}
+/>
+<Input
+    type="number"
+    placeholder="Duration in seconds(minimum 60 seconds)"
+    value={auctionDuration}
+    onChange={(e) => setAuctionDuration(e.target.value)}
+    min={60}
+    step={1}
+/>
+
           </>
         )}
       </Modal>

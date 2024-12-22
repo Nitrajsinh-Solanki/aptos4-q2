@@ -7,9 +7,12 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import MyNFTs from "./pages/MyNFTs";
 import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import AuctionView from "./pages/AuctionView";
 
 
-const client = new AptosClient("https://fullnode.testnet.aptoslabs.com/v1");
+
+
+const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
 const marketplaceAddr = "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
 
 function App() {
@@ -51,6 +54,9 @@ function App() {
         <Routes>
           <Route path="/" element={<MarketView marketplaceAddr={marketplaceAddr} />} />
           <Route path="/my-nfts" element={<MyNFTs />} />
+          <Route path="/auctions" element={<AuctionView marketplaceAddr={marketplaceAddr} />} />
+
+
         </Routes>
 
         <Modal
