@@ -13,6 +13,7 @@ import {
 import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
+
 const { Title } = Typography;
 const { Meta } = Card;
 
@@ -44,6 +45,13 @@ const MyNFTs: React.FC = () => {
   const [isAuctionModalVisible, setIsAuctionModalVisible] = useState(false);
   const [auctionStartPrice, setAuctionStartPrice] = useState("");
   const [auctionDuration, setAuctionDuration] = useState("");
+
+
+  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
+const [selectedNftForTransfer, setSelectedNftForTransfer] = useState<NFT | null>(null);
+const [recipientAddress, setRecipientAddress] = useState("");
+
+
 
   const fetchUserNFTs = useCallback(async () => {
     if (!account) return;
@@ -235,6 +243,37 @@ const MyNFTs: React.FC = () => {
 };
 
 
+const handleTransferNFT = async () => {
+  if (!selectedNftForTransfer || !recipientAddress) {
+    message.error("Please fill in all required fields");
+    return;
+  }
+
+  try {
+    const payload = {
+      type: "entry_function_payload",
+      function: `${marketplaceAddr}::NFTMarketplace::transfer_nft`,
+      type_arguments: [],
+      arguments: [
+        marketplaceAddr,
+        selectedNftForTransfer.id.toString(),
+        recipientAddress
+      ]
+    };
+
+    const response = await (window as any).aptos.signAndSubmitTransaction(payload);
+    await client.waitForTransaction(response.hash);
+
+    message.success("NFT transferred successfully!");
+    setIsTransferModalVisible(false);
+    setRecipientAddress("");
+    setSelectedNftForTransfer(null);
+    fetchUserNFTs();
+  } catch (error: any) {
+    console.error("Error transferring NFT:", error);
+    message.error(error.message || "Failed to transfer NFT");
+  }
+};
 
 
 
@@ -293,6 +332,12 @@ const MyNFTs: React.FC = () => {
                 <Button type="link" onClick={() => handleSellClick(nft)}>
                   Sell
                 </Button>,
+                  <Button type="link" onClick={() => {
+                    setSelectedNftForTransfer(nft);
+                    setIsTransferModalVisible(true);
+                  }}>
+                    Transfer
+                  </Button>,
                 <Button
                   type="link"
                   onClick={() => {
@@ -411,6 +456,48 @@ const MyNFTs: React.FC = () => {
           </>
         )}
       </Modal>
+      <Modal
+  title="Transfer NFT"
+  visible={isTransferModalVisible}
+  onCancel={() => {
+    setIsTransferModalVisible(false);
+    setSelectedNftForTransfer(null);
+    setRecipientAddress("");
+  }}
+  footer={[
+    <Button key="cancel" onClick={() => {
+      setIsTransferModalVisible(false);
+      setSelectedNftForTransfer(null);
+      setRecipientAddress("");
+    }}>
+      Cancel
+    </Button>,
+    <Button 
+      key="submit" 
+      type="primary" 
+      onClick={handleTransferNFT}
+    >
+      Transfer NFT
+    </Button>
+  ]}
+>
+  {selectedNftForTransfer && (
+    <>
+      <p><strong>NFT ID:</strong> {selectedNftForTransfer.id}</p>
+      <p><strong>Name:</strong> {selectedNftForTransfer.name}</p>
+      <p><strong>Description:</strong> {selectedNftForTransfer.description}</p>
+      <Input
+        placeholder="Enter recipient address"
+        value={recipientAddress}
+        onChange={(e) => setRecipientAddress(e.target.value)}
+        style={{ marginTop: 10 }}
+      />
+      <p style={{ marginTop: 10, fontSize: '12px', color: '#888' }}>
+        Please enter the complete address of the recipient
+      </p>
+    </>
+  )}
+</Modal>
     </div>
   );
 };
