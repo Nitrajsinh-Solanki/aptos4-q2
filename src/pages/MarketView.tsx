@@ -22,6 +22,8 @@ type NFT = {
   for_sale: boolean;
   rarity: number;
   listing_date: number;
+  creator: string;
+  royalty_percentage: number;
 };
 
 interface MarketViewProps {
@@ -151,7 +153,7 @@ const filterNFTs = (nfts: NFT[]) => {
     try {
         const response = await client.getAccountResource(
             marketplaceAddr,
-            "0xab37efef9c72f53321b0a6c0ba5685c87e2cb077649c4c3f3955fd6d5bf3c0c2::NFTMarketplace::Marketplace"
+            "0xed990159b07f1958216ec51360f9734f4d1f43522d97b3c66f1214699c107932::NFTMarketplace::Marketplace"
         );
         const nftList = (response.data as { nfts: NFT[] }).nfts;
 
@@ -198,14 +200,12 @@ const filterNFTs = (nfts: NFT[]) => {
     try {
       const priceInOctas = selectedNft.price * 100000000;
       const tipInOctas = tipAmount * 100000000;
-    const totalPayment = priceInOctas + tipInOctas;
-  
+      
       const entryFunctionPayload = {
         type: "entry_function_payload",
-        function: `${marketplaceAddr}::NFTMarketplace::purchase_nft_with_tip`,
+        function: `${marketplaceAddr}::NFTMarketplace::purchase_nft_with_royalty`,
         type_arguments: [],
         arguments: [marketplaceAddr, selectedNft.id.toString(), priceInOctas.toString(), tipInOctas.toString()],
-       
       };
   
       const response = await (window as any).aptos.signAndSubmitTransaction(entryFunctionPayload);
@@ -345,7 +345,9 @@ const filterNFTs = (nfts: NFT[]) => {
       <p><strong>Price:</strong> {selectedNft.price} APT</p>
       <p><strong>Owner:</strong> {truncateAddress(selectedNft.owner)}</p>
       <p>Listed: {formatListingDate(selectedNft.listing_date)}</p>
-      
+      <p><strong>Creator:</strong> {truncateAddress(selectedNft.creator)}</p>
+      <p><strong>Royalty:</strong> {selectedNft.royalty_percentage}%</p>
+      <p><strong>Royalty Amount:</strong> {(selectedNft.price * selectedNft.royalty_percentage / 100).toFixed(2)} APT</p>
       <div style={{ marginTop: 20 }}>
         <Typography.Text strong>Tip Amount (APT)(Optional)</Typography.Text>
         <InputNumber
