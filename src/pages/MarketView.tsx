@@ -4,6 +4,8 @@ import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { FilterSort } from "../components/FilterSort";
 import { FilterParams, SortOption } from '../types/marketplace';
+import { InputNumber } from 'antd';
+
 
 const { Title } = Typography;
 const { Meta } = Card;
@@ -56,6 +58,9 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
   const [searchVisible, setSearchVisible] = useState(true);
 
 
+  const [tipAmount, setTipAmount] = useState<number>(0);
+
+  
   const [filters, setFilters] = useState<FilterParams>({
     searchTerm: '',
     priceRange: [0, 20],
@@ -192,12 +197,15 @@ const filterNFTs = (nfts: NFT[]) => {
   
     try {
       const priceInOctas = selectedNft.price * 100000000;
+      const tipInOctas = tipAmount * 100000000;
+    const totalPayment = priceInOctas + tipInOctas;
   
       const entryFunctionPayload = {
         type: "entry_function_payload",
-        function: `${marketplaceAddr}::NFTMarketplace::purchase_nft`,
+        function: `${marketplaceAddr}::NFTMarketplace::purchase_nft_with_tip`,
         type_arguments: [],
-        arguments: [marketplaceAddr, selectedNft.id.toString(), priceInOctas.toString()],
+        arguments: [marketplaceAddr, selectedNft.id.toString(), priceInOctas.toString(), tipInOctas.toString()],
+       
       };
   
       const response = await (window as any).aptos.signAndSubmitTransaction(entryFunctionPayload);
@@ -312,31 +320,53 @@ const filterNFTs = (nfts: NFT[]) => {
       </div>
   
       <Modal
-        title="Purchase NFT"
-        visible={isBuyModalVisible}
-        onCancel={handleCancelBuy}
-        footer={[
-          <Button key="cancel" onClick={handleCancelBuy}>
-            Cancel
-          </Button>,
-          <Button key="confirm" type="primary" onClick={handleConfirmPurchase}>
-            Confirm Purchase
-          </Button>,
-        ]}
-      >
-        {selectedNft && (
-          <>
-            <p><strong>NFT ID:</strong> {selectedNft.id}</p>
-            <p><strong>Name:</strong> {selectedNft.name}</p>
-            <p><strong>Description:</strong> {selectedNft.description}</p>
-            <p><strong>Rarity:</strong> {rarityLabels[selectedNft.rarity]}</p>
-            <p><strong>Price:</strong> {selectedNft.price} APT</p>
-            <p><strong>Owner:</strong> {truncateAddress(selectedNft.owner)}</p>
-            <p>Listed: {formatListingDate(selectedNft.listing_date)}</p>
+  title="Purchase NFT"
+  visible={isBuyModalVisible}
+  onCancel={handleCancelBuy}
+  footer={[
+    <Button key="cancel" onClick={handleCancelBuy}>
+      Cancel
+    </Button>,
+    <Button 
+      key="confirm" 
+      type="primary" 
+      onClick={handleConfirmPurchase}
+    >
+      Confirm Purchase
+    </Button>,
+  ]}
+>
+  {selectedNft && (
+    <>
+      <p><strong>NFT ID:</strong> {selectedNft.id}</p>
+      <p><strong>Name:</strong> {selectedNft.name}</p>
+      <p><strong>Description:</strong> {selectedNft.description}</p>
+      <p><strong>Rarity:</strong> {rarityLabels[selectedNft.rarity]}</p>
+      <p><strong>Price:</strong> {selectedNft.price} APT</p>
+      <p><strong>Owner:</strong> {truncateAddress(selectedNft.owner)}</p>
+      <p>Listed: {formatListingDate(selectedNft.listing_date)}</p>
+      
+      <div style={{ marginTop: 20 }}>
+        <Typography.Text strong>Tip Amount (APT)(Optional)</Typography.Text>
+        <InputNumber
+          min={0}
+          step={0.1}
+          precision={2}
+          value={tipAmount}
+          onChange={(value) => setTipAmount(value || 0)}
+          style={{ width: '100%', marginTop: 8 }}
+          placeholder="Enter tip amount (optional)"
+        />
+      </div>
 
-          </>
-        )}
-      </Modal>
+      <div style={{ marginTop: 16 }}>
+        <Typography.Text type="secondary">
+          Total Payment: {(selectedNft.price + tipAmount).toFixed(2)} APT
+        </Typography.Text>
+      </div>
+    </>
+  )}
+</Modal>
     </div>
   );
 };
