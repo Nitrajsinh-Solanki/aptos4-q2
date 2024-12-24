@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Typography, Radio, message, Card, Row, Col, Pagination, Tag, Button, Modal } from "antd";
 import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { FilterSort } from "../components/FilterSort";
+import { FilterParams, SortOption } from '../types/marketplace';
 
 const { Title } = Typography;
 const { Meta } = Card;
@@ -17,6 +19,7 @@ type NFT = {
   price: number;
   for_sale: boolean;
   rarity: number;
+  listing_date: number;
 };
 
 interface MarketViewProps {
@@ -50,16 +53,100 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
 
   const [isBuyModalVisible, setIsBuyModalVisible] = useState(false);
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
+  const [searchVisible, setSearchVisible] = useState(true);
+
+
+  const [filters, setFilters] = useState<FilterParams>({
+    searchTerm: '',
+    priceRange: [0, 20],
+    rarity: 'all'
+});
+
+  const [filteredAndSortedNFTs, setFilteredAndSortedNFTs] = useState<NFT[]>([]);
+  const [sortBy, setSortBy] = useState<SortOption>('date_desc');
+
+  const sortNFTs = (nfts: NFT[]) => {
+    return [...nfts].sort((a, b) => {
+        switch (sortBy) {
+            case 'price_asc':
+                return a.price - b.price;
+            case 'price_desc':
+                return b.price - a.price;
+                case 'date_desc':
+                  const bDate = b.listing_date || 0;
+                  const aDate = a.listing_date || 0;
+                  return bDate - aDate;
+              case 'date_asc':
+                  const aDateAsc = a.listing_date || 0;
+                  const bDateAsc = b.listing_date || 0;
+                  return aDateAsc - bDateAsc;
+            case 'name_asc':
+                return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+            case 'name_desc':
+                return b.name.toLowerCase().localeCompare(a.name.toLowerCase());
+            case 'id_asc':
+                return a.id - b.id;
+            case 'rarity_desc':
+                return b.rarity - a.rarity;
+            default:
+                return 0;
+        }
+    });
+};
 
   useEffect(() => {
     handleFetchNfts(undefined);
   }, []);
+ useEffect(() => {
+    const filtered = filterNFTs(nfts);
+    const sorted = sortNFTs(filtered);
+    setFilteredAndSortedNFTs(sorted);
+    setSearchVisible(true);
+}, [nfts, filters, sortBy]);
+
+const formatListingDate = (timestamp: number) => {
+  if (!timestamp || timestamp === 0) return 'Not listed';
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleString();
+};
+
+
+const filterNFTs = (nfts: NFT[]) => {
+  return nfts.filter(nft => {
+      // Search term matching
+      const searchMatch = !filters.searchTerm 
+          ? true 
+          : (
+              nft.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+              nft.description.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+              nft.id.toString().includes(filters.searchTerm) ||
+              nft.owner.toLowerCase().includes(filters.searchTerm.toLowerCase())
+          );
+
+      // Price range matching
+      const priceMatch = filters.priceRange 
+          ? nft.price >= filters.priceRange[0] && nft.price <= filters.priceRange[1] 
+          : true;
+
+      // Rarity matching
+      const rarityMatch = filters.rarity 
+          ? filters.rarity === 'all' || nft.rarity === Number(filters.rarity) 
+          : true;
+
+      return searchMatch && priceMatch && rarityMatch;
+  });
+};
+
+  
+
+  const displayedNFTs = sortNFTs(filterNFTs(nfts));
+
 
   const handleFetchNfts = async (selectedRarity: number | undefined) => {
     try {
         const response = await client.getAccountResource(
             marketplaceAddr,
-            "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d::NFTMarketplace::Marketplace"
+            "0xab37efef9c72f53321b0a6c0ba5685c87e2cb077649c4c3f3955fd6d5bf3c0c2::NFTMarketplace::Marketplace"
         );
         const nftList = (response.data as { nfts: NFT[] }).nfts;
 
@@ -72,12 +159,13 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
         };
 
         const decodedNfts = nftList.map((nft) => ({
-            ...nft,
-            name: new TextDecoder().decode(hexToUint8Array(nft.name.slice(2))),
-            description: new TextDecoder().decode(hexToUint8Array(nft.description.slice(2))),
-            uri: new TextDecoder().decode(hexToUint8Array(nft.uri.slice(2))),
-            price: nft.price / 100000000,
-        }));
+          ...nft,
+          name: new TextDecoder().decode(hexToUint8Array(nft.name.slice(2))),
+          description: new TextDecoder().decode(hexToUint8Array(nft.description.slice(2))),
+          uri: new TextDecoder().decode(hexToUint8Array(nft.uri.slice(2))),
+          price: nft.price / 100000000,
+          listing_date: Number(nft.listing_date)
+      }));
 
         const filteredNfts = decodedNfts.filter((nft) => nft.for_sale && (selectedRarity === undefined || nft.rarity === selectedRarity));
 
@@ -124,7 +212,11 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
     }
   };
 
-  const paginatedNfts = nfts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedNfts = filteredAndSortedNFTs.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+);
+
 
   return (
     <div
@@ -136,6 +228,7 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
       }}
     >
       <Title level={2} style={{ marginBottom: "20px" }}>Marketplace</Title>
+    
   
       <div style={{ marginBottom: "20px" }}>
         <Radio.Group
@@ -154,7 +247,10 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
           <Radio.Button value={4}>Super Rare</Radio.Button>
         </Radio.Group>
       </div>
-  
+      <FilterSort 
+  onFilterChange={(newFilters: FilterParams) => setFilters({ ...filters, ...newFilters })}
+  onSortChange={(value: SortOption) => setSortBy(value)}
+/>
       <Row
         gutter={[24, 24]}
         style={{
@@ -206,13 +302,13 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
       </Row>
   
       <div style={{ marginTop: 30, marginBottom: 30 }}>
-        <Pagination
-          current={currentPage}
-          pageSize={pageSize}
-          total={nfts.length}
-          onChange={(page) => setCurrentPage(page)}
-          style={{ display: "flex", justifyContent: "center" }}
-        />
+      <Pagination
+    current={currentPage}
+    pageSize={pageSize}
+    total={filteredAndSortedNFTs.length}
+    onChange={(page) => setCurrentPage(page)}
+    style={{ display: "flex", justifyContent: "center" }}
+/>
       </div>
   
       <Modal
@@ -236,6 +332,8 @@ const MarketView: React.FC<MarketViewProps> = ({ marketplaceAddr }) => {
             <p><strong>Rarity:</strong> {rarityLabels[selectedNft.rarity]}</p>
             <p><strong>Price:</strong> {selectedNft.price} APT</p>
             <p><strong>Owner:</strong> {truncateAddress(selectedNft.owner)}</p>
+            <p>Listed: {formatListingDate(selectedNft.listing_date)}</p>
+
           </>
         )}
       </Modal>

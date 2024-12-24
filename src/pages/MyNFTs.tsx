@@ -36,7 +36,7 @@ const MyNFTs: React.FC = () => {
   const [totalNFTs, setTotalNFTs] = useState(0);
   const { account, signAndSubmitTransaction } = useWallet();
   const marketplaceAddr =
-    "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
+    "0xab37efef9c72f53321b0a6c0ba5685c87e2cb077649c4c3f3955fd6d5bf3c0c2";
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedNft, setSelectedNft] = useState<NFT | null>(null);
@@ -153,6 +153,8 @@ const [recipientAddress, setRecipientAddress] = useState("");
 
     try {
       const priceInOctas = parseFloat(salePrice) * 100000000;
+      // const listingDate = Math.floor(Date.now() / 1000); 
+
 
       const entryFunctionPayload = {
         type: "entry_function_payload",
@@ -162,6 +164,7 @@ const [recipientAddress, setRecipientAddress] = useState("");
           marketplaceAddr,
           selectedNft.id.toString(),
           priceInOctas.toString(),
+          // listingDate.toString(),
         ],
       };
 

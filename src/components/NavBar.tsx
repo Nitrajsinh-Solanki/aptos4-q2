@@ -23,6 +23,8 @@ const { Header } = Layout;
 const { Text } = Typography;
 
 const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
+const marketplaceAddr =
+  "0x0d0b3c6c8492f6b4df2661fc878a99228271f0023cb9da50654668a85db9a1f1";
 
 interface NavBarProps {
   onMintNFTClick: () => void;
@@ -125,6 +127,13 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
               Auctions
             </Link>
           </Menu.Item>
+          {account?.address === marketplaceAddr && (
+            <Menu.Item key="whitelist">
+              <Link to="/whitelist" style={{ color: "#fff" }}>
+                Whitelist Manager
+              </Link>
+            </Menu.Item>
+          )}
         </Menu>
       </div>
 

@@ -13,7 +13,7 @@ import AuctionView from "./pages/AuctionView";
 
 
 const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
-const marketplaceAddr = "0xb8cd9a4ab7aee0651c82a5e553e9333b11cad30d17cd3ac6dd28ea16d602147d";
+const marketplaceAddr = "0xab37efef9c72f53321b0a6c0ba5685c87e2cb077649c4c3f3955fd6d5bf3c0c2";
 
 function App() {
   const { signAndSubmitTransaction } = useWallet();
