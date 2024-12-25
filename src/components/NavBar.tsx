@@ -7,6 +7,7 @@ import {
   Button,
   Dropdown,
   message,
+  Modal,
 } from "antd";
 import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
 import "@aptos-labs/wallet-adapter-ant-design/dist/index.css";
@@ -18,21 +19,23 @@ import {
   LogoutOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
+import ReceivedOffers from "./ReceivedOffers";
 
 const { Header } = Layout;
 const { Text } = Typography;
 
 const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
 const marketplaceAddr =
-  "0x0d0b3c6c8492f6b4df2661fc878a99228271f0023cb9da50654668a85db9a1f1";
+  "0x3ed23f75dc96ed785388d48d31252e98e3b031fb3cdca6175f0a9c75d4489521";
 
 interface NavBarProps {
   onMintNFTClick: () => void;
 }
 
 const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
-  const { connected, account, network, disconnect } = useWallet(); // Add disconnect here
+  const { connected, account, network, disconnect } = useWallet();
   const [balance, setBalance] = useState<number | null>(null);
+  const [isOffersModalVisible, setIsOffersModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -63,8 +66,8 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
 
   const handleLogout = async () => {
     try {
-      await disconnect(); // Disconnect the wallet
-      setBalance(null); // Clear balance on logout
+      await disconnect();
+      setBalance(null);
       message.success("Disconnected from wallet");
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
@@ -90,23 +93,21 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
           width: "100%",
         }}
       >
-        {/* Logo */}
         <img
           src="/Aptos_Primary_WHT.png"
           alt="Aptos Logo"
           style={{ height: "30px", marginRight: 16 }}
         />
 
-        {/* Menu */}
         <Menu
           theme="dark"
           mode="horizontal"
           defaultSelectedKeys={["marketplace"]}
           style={{
             backgroundColor: "#001529",
-            flexGrow: 1, // Allow the menu to take up remaining space
-            flexWrap: "nowrap", // Prevent wrapping of items
-            display: "flex", // Ensure horizontal alignment
+            flexGrow: 1,
+            flexWrap: "nowrap",
+            display: "flex",
           }}
         >
           <Menu.Item key="marketplace">
@@ -127,13 +128,10 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
               Auctions
             </Link>
           </Menu.Item>
-          {account?.address === marketplaceAddr && (
-            <Menu.Item key="whitelist">
-              <Link to="/whitelist" style={{ color: "#fff" }}>
-                Whitelist Manager
-              </Link>
-            </Menu.Item>
-          )}
+          <Menu.Item key="received-offers" onClick={() => setIsOffersModalVisible(true)}>
+            <span style={{ color: "#fff" }}>Received Offers</span>
+          </Menu.Item>
+          
         </Menu>
       </div>
 
@@ -174,6 +172,16 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
           <WalletSelector />
         )}
       </Space>
+
+      <Modal
+        title="Received Offers"
+        visible={isOffersModalVisible}
+        onCancel={() => setIsOffersModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        <ReceivedOffers marketplaceAddr={marketplaceAddr} />
+      </Modal>
     </Header>
   );
 };
