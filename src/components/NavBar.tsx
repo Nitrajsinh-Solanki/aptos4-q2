@@ -128,10 +128,17 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
               Auctions
             </Link>
           </Menu.Item>
-          <Menu.Item key="received-offers" onClick={() => setIsOffersModalVisible(true)}>
+          <Menu.Item
+            key="received-offers"
+            onClick={() => setIsOffersModalVisible(true)}
+          >
             <span style={{ color: "#fff" }}>Received Offers</span>
           </Menu.Item>
-          
+          <Menu.Item key="transfer">
+            <Link to="/transfer" style={{ color: "#fff" }}>
+              Transfer APT
+            </Link>
+          </Menu.Item>
         </Menu>
       </div>
 

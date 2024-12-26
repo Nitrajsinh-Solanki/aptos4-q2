@@ -8,6 +8,7 @@ import MyNFTs from "./pages/MyNFTs";
 import { AptosClient } from "aptos";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import AuctionView from "./pages/AuctionView";
+import AptTransfer from "./components/AptTransfer";
 
 const client = new AptosClient("https://fullnode.devnet.aptoslabs.com/v1");
 const marketplaceAddr =
@@ -26,7 +27,6 @@ function App() {
     uri: string;
     rarity: number;
     royaltyPercentage: number;
-
   }) => {
     try {
       const nameVector = Array.from(new TextEncoder().encode(values.name));
@@ -78,6 +78,10 @@ function App() {
           <Route
             path="/auctions"
             element={<AuctionView marketplaceAddr={marketplaceAddr} />}
+          />
+          <Route
+            path="/transfer"
+            element={<AptTransfer marketplaceAddr={marketplaceAddr} />}
           />
         </Routes>
         <Modal
